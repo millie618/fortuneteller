@@ -1,8 +1,21 @@
 let button; 
-
-let sparkle;
-
+let rebutton;
+let img;
 let angle = 0
+
+
+let port;
+let connectBtn;
+let data = [];
+let c = 0;
+let proximity =100;
+let touch = "no touch";
+
+
+let textToType = "fortune";
+let typedText = "fortune"; // The text that will be progressively typed
+let currentIndex = 0; // The index of the current character being typed
+let typingSpeed = 50;
 
 let  fortunes = ["Your future is full of possibilities and exciting adventures.",
   "Your intuition will guide you towards success and happiness.",
@@ -56,25 +69,33 @@ let  fortunes = ["Your future is full of possibilities and exciting adventures."
   "Your perseverance and resilience will lead you towards success and happiness."]
 
   function preload(){
-    //sparkle = loadImage('assets/sparkle.png');
+
+   // img = loadImage('assets/FortuneBG.png');
   }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight );
+  createCanvas(windowWidth, windowHeight);
+
+  //button = createImg('crystal.png');  
+  //button.size(200,200)
+  //button.position(windowWidth/2-100,windowHeight/2+120);
+
+
+  //button.mouseClicked(tell);
+
+  port = createSerial();
 
  
 
- //sparkle = createImg(sparkle,200,200,20,20);
+  // any other ports can be opened via a dialog after
+  // user interaction (see connectBtnClick below)
 
-  button = createImg('crystal.png');  
-  button.size(200,200)
-  button.position(windowWidth/2-100,windowHeight/2+120);
+  connectBtn = createButton("Connect to Arduino");
+  connectBtn.position(10, 20);
+  connectBtn.mousePressed(connectBtnClick);
 
+ // image(img,1920,1080);
 
-  button.mouseClicked(tell);
-
-  
- 
 }
 
 function draw() {
@@ -86,33 +107,124 @@ rectMode(CENTER);
 rect(windowWidth/2, windowHeight/2, 600,200);
 
 
- 
+
 textSize(40);
 fill(179,255,63);
-text('CL1CK THE 0RB TO REV3AL UR FUTUR3', 333+33,222);
-rotateX(angle); 
+text('CL1CK THE 0RB TO REV3AL UR FUTUR3', 444+111,222);
 
-//if(button.mouseClicked === true){
- // (tell)
-//} 
-//else{
 
-//}
+// read the serial data. 
+let str = port.readUntil("\n");
+serialRead(str); //this example uses a slightly more complex function to control the data
+
+push();
+fill(0);
+textSize(32);
+textAlign(LEFT,CENTER);
+text(touch,50,300);
+text(proximity,50,350);
+pop();
+
+//do something with the data
+//let diam = map(proximity,500,1020,10,200);
+
+
+if(touch=="touch"){ //if touched
+tell;
 }
+else if (touch=="no touch"){ //if not touched
+  console.log ('no touch');
+}
+  // changes button label based on connection status
+  if (!port.opened()) {
+    connectBtn.html("Connect to Arduino");
+  } else {
+    connectBtn.html("Disconnect");
+  }
+}
+
+
+
+
+
 
 
 
 
 function tell(){
 
-    let fortune = random(fortunes);
-  console.log(fortune);
-  push()
-  fill(0);
-  textSize(16);
-  text(fortune, windowWidth/2-100, windowHeight/2);
-  pop();
+  let fortune = random(fortunes);
+console.log(fortune);
+//refresh white rectangle 
+push()
+fill(255);
+rectMode(CENTER);
+rect(windowWidth/2, windowHeight/2, 600,200);
+pop()
+
+    // Check if there are more characters to type
+    if (currentIndex < fortune.length) {
+      // Add the next character to the typed text
+      typedText += fortune[currentIndex];
+      currentIndex++;
+    }
+
+//text
+push()
+fill(0);
+textSize(16);
+text(typedText, windowWidth/2-222, windowHeight/2);
+textAlign(CENTER, CENTER);
+pop();
 }
 
 
-//need help with making fortune text disappear after it appears 
+
+
+//------------------------------------------
+// Read Serial (this controls the data sent from Arduino a bit more closely)
+function parseSerialBuffer(buffer)
+{
+  //console.log("Parsing " + buffer);
+    try {
+    // Parse string to extract  information
+    let inString = trim(buffer); // remove whitespaces from beginning/end
+    let values=[];
+    values = split(inString, ","); // Split string using space as a delimiter and cast to int
+   console.log(values);
+   
+    for(let i = 0; i < values.length; i++) {
+      proximity = int(values[0]); //returns a number
+      touch = String(values[1]);  //returns a String
+    }
+  }
+  catch(e) {
+    e.printStackTrace();
+  }
+}
+
+/// Read Serial and control new line return buffer
+let inputBuffer = "";
+function serialRead(data) {
+  // Read data from the serial buffer
+  for(let n = 0; n < data.length; ++n)
+  {
+    let c = data[n];
+    // copy data to temp buffer
+    inputBuffer += c;
+    if('\n' == c){
+      // when we find a newline, we process what we have so far
+      parseSerialBuffer(inputBuffer);
+      // and then start over
+      inputBuffer = "";
+    }
+  }
+}
+
+function connectBtnClick() {
+  if (!port.opened()) {
+    port.open("Arduino", 9600);
+  } else {
+    port.close();
+  }
+}
